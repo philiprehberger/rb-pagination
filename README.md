@@ -15,7 +15,7 @@ Framework-agnostic pagination with cursor, offset, and keyset strategies
 Add to your Gemfile:
 
 ```ruby
-gem 'philiprehberger-pagination'
+gem "philiprehberger-pagination"
 ```
 
 Or install directly:
@@ -97,8 +97,8 @@ page.links  # => { next: "cursor_value", prev: "cursor_value" }
 
 ```bash
 bundle install
-bundle exec rspec      # Run tests
-bundle exec rubocop    # Check code style
+bundle exec rspec
+bundle exec rubocop
 ```
 
 ## License
