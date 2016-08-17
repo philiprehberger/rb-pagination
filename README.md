@@ -27,7 +27,7 @@ gem install philiprehberger-pagination
 ## Usage
 
 ```ruby
-require 'philiprehberger/pagination'
+require "philiprehberger/pagination"
 
 page = Philiprehberger::Pagination.paginate(users,
   strategy: :offset,
