@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 require 'base64'
+require 'openssl'
 
 RSpec.describe Philiprehberger::Pagination do
   let(:items) { (1..50).to_a }
@@ -66,6 +67,13 @@ RSpec.describe Philiprehberger::Pagination do
       page = described_class.paginate(items, strategy: :offset, per_page: 0)
       expect(page.items.length).to eq(1)
     end
+
+    it 'sets current_page and offset on the page' do
+      page = described_class.paginate(items, strategy: :offset, per_page: 10, page: 3)
+      expect(page.current_page).to eq(3)
+      expect(page.offset).to eq(20)
+      expect(page.per_page).to eq(10)
+    end
   end
 
   describe 'cursor strategy' do
@@ -95,6 +103,13 @@ RSpec.describe Philiprehberger::Pagination do
       page = described_class.paginate(items, strategy: :cursor, per_page: 10)
       expect(page.total).to eq(50)
     end
+
+    it 'does not set current_page or offset for cursor strategy' do
+      page = described_class.paginate(items, strategy: :cursor, per_page: 10)
+      expect(page.current_page).to be_nil
+      expect(page.offset).to be_nil
+      expect(page.per_page).to eq(10)
+    end
   end
 
   describe 'keyset strategy' do
@@ -115,6 +130,13 @@ RSpec.describe Philiprehberger::Pagination do
       page = described_class.paginate(items, strategy: :keyset, per_page: 10, cursor: cursor)
       expect(page.items).to eq((41..50).to_a)
       expect(page.has_next?).to be false
+    end
+
+    it 'does not set current_page or offset for keyset strategy' do
+      page = described_class.paginate(items, strategy: :keyset, per_page: 10)
+      expect(page.current_page).to be_nil
+      expect(page.offset).to be_nil
+      expect(page.per_page).to eq(10)
     end
   end
 
@@ -192,6 +214,196 @@ RSpec.describe Philiprehberger::Pagination do
     end
   end
 
+  describe 'page metadata' do
+    it 'returns metadata hash for offset pagination' do
+      page = described_class.paginate(items, strategy: :offset, per_page: 10, page: 2)
+      meta = page.metadata
+      expect(meta[:current_page]).to eq(2)
+      expect(meta[:per_page]).to eq(10)
+      expect(meta[:total_pages]).to eq(5)
+      expect(meta[:total_count]).to eq(50)
+      expect(meta[:offset]).to eq(10)
+    end
+
+    it 'returns nil current_page and offset for cursor pagination' do
+      page = described_class.paginate(items, strategy: :cursor, per_page: 10)
+      meta = page.metadata
+      expect(meta[:current_page]).to be_nil
+      expect(meta[:per_page]).to eq(10)
+      expect(meta[:total_pages]).to eq(5)
+      expect(meta[:total_count]).to eq(50)
+      expect(meta[:offset]).to be_nil
+    end
+
+    it 'returns nil current_page and offset for keyset pagination' do
+      page = described_class.paginate(items, strategy: :keyset, per_page: 10)
+      meta = page.metadata
+      expect(meta[:current_page]).to be_nil
+      expect(meta[:offset]).to be_nil
+      expect(meta[:total_pages]).to eq(5)
+    end
+
+    it 'calculates total_pages with ceiling division' do
+      page = described_class.paginate((1..13).to_a, strategy: :offset, per_page: 5)
+      expect(page.metadata[:total_pages]).to eq(3)
+    end
+
+    it 'returns total_pages as nil when total is nil' do
+      page = Philiprehberger::Pagination::Page.new(items: [1, 2], per_page: 10)
+      expect(page.metadata[:total_pages]).to be_nil
+    end
+
+    it 'returns total_pages as nil when per_page is nil' do
+      page = Philiprehberger::Pagination::Page.new(items: [1, 2], total: 10)
+      expect(page.metadata[:total_pages]).to be_nil
+    end
+  end
+
+  describe 'page size limits' do
+    it 'allows per_page within bounds' do
+      page = described_class.paginate(items, per_page: 10, min_per_page: 1, max_per_page: 100)
+      expect(page.items.length).to eq(10)
+    end
+
+    it 'raises InvalidPageSizeError when per_page exceeds max' do
+      expect do
+        described_class.paginate(items, per_page: 200, max_per_page: 100)
+      end.to raise_error(Philiprehberger::Pagination::InvalidPageSizeError, /exceeds maximum 100/)
+    end
+
+    it 'raises InvalidPageSizeError when per_page is below min' do
+      expect do
+        described_class.paginate(items, per_page: 0, min_per_page: 1)
+      end.to raise_error(Philiprehberger::Pagination::InvalidPageSizeError, /below minimum 1/)
+    end
+
+    it 'does not enforce limits when max_per_page is nil' do
+      page = described_class.paginate(items, per_page: 1000)
+      expect(page.items).to eq(items)
+    end
+
+    it 'does not enforce limits when min_per_page is nil' do
+      page = described_class.paginate(items, per_page: 0)
+      expect(page.items.length).to eq(1)
+    end
+
+    it 'inherits from Error' do
+      expect(Philiprehberger::Pagination::InvalidPageSizeError).to be < Philiprehberger::Pagination::Error
+    end
+
+    it 'raises when per_page equals max boundary' do
+      page = described_class.paginate(items, per_page: 100, max_per_page: 100)
+      expect(page.per_page).to eq(100)
+    end
+
+    it 'raises when per_page equals min boundary' do
+      page = described_class.paginate(items, per_page: 5, min_per_page: 5)
+      expect(page.per_page).to eq(5)
+    end
+
+    it 'works with both min and max set' do
+      expect do
+        described_class.paginate(items, per_page: 200, min_per_page: 5, max_per_page: 100)
+      end.to raise_error(Philiprehberger::Pagination::InvalidPageSizeError)
+
+      expect do
+        described_class.paginate(items, per_page: 2, min_per_page: 5, max_per_page: 100)
+      end.to raise_error(Philiprehberger::Pagination::InvalidPageSizeError)
+    end
+  end
+
+  describe 'cursor encryption' do
+    let(:secret) { 'my-secret-key' }
+
+    context 'with cursor strategy' do
+      it 'returns signed cursors when secret is provided' do
+        page = described_class.paginate(items, strategy: :cursor, per_page: 10, secret: secret)
+        expect(page.next_cursor).to include('--')
+      end
+
+      it 'paginates correctly with signed cursors' do
+        page1 = described_class.paginate(items, strategy: :cursor, per_page: 10, secret: secret)
+        page2 = described_class.paginate(items, strategy: :cursor, per_page: 10, cursor: page1.next_cursor,
+                                                secret: secret)
+        expect(page2.items).to eq((11..20).to_a)
+      end
+
+      it 'raises InvalidCursorError for tampered cursor' do
+        page = described_class.paginate(items, strategy: :cursor, per_page: 10, secret: secret)
+        tampered = "#{page.next_cursor}tampered"
+        expect do
+          described_class.paginate(items, strategy: :cursor, per_page: 10, cursor: tampered, secret: secret)
+        end.to raise_error(Philiprehberger::Pagination::InvalidCursorError)
+      end
+
+      it 'raises InvalidCursorError for cursor signed with different secret' do
+        page = described_class.paginate(items, strategy: :cursor, per_page: 10, secret: 'key-a')
+        expect do
+          described_class.paginate(items, strategy: :cursor, per_page: 10, cursor: page.next_cursor, secret: 'key-b')
+        end.to raise_error(Philiprehberger::Pagination::InvalidCursorError)
+      end
+
+      it 'raises InvalidCursorError for malformed cursor' do
+        expect do
+          described_class.paginate(items, strategy: :cursor, per_page: 10, cursor: 'not-valid', secret: secret)
+        end.to raise_error(Philiprehberger::Pagination::InvalidCursorError)
+      end
+
+      it 'works without secret (backward compatible)' do
+        page = described_class.paginate(items, strategy: :cursor, per_page: 10)
+        expect(page.next_cursor).not_to include('--')
+        page2 = described_class.paginate(items, strategy: :cursor, per_page: 10, cursor: page.next_cursor)
+        expect(page2.items).to eq((11..20).to_a)
+      end
+
+      it 'can traverse all pages with signed cursors' do
+        all_items = []
+        cursor = nil
+        loop do
+          page = described_class.paginate(items, strategy: :cursor, per_page: 10, cursor: cursor, secret: secret)
+          all_items.concat(page.items)
+          break unless page.has_next?
+
+          cursor = page.next_cursor
+        end
+        expect(all_items).to eq(items)
+      end
+    end
+
+    context 'with keyset strategy' do
+      it 'returns signed cursors when secret is provided' do
+        page = described_class.paginate(items, strategy: :keyset, per_page: 10, secret: secret)
+        expect(page.next_cursor).to include('--')
+      end
+
+      it 'paginates correctly with signed cursors' do
+        page1 = described_class.paginate(items, strategy: :keyset, per_page: 10, secret: secret)
+        page2 = described_class.paginate(items, strategy: :keyset, per_page: 10, cursor: page1.next_cursor,
+                                                secret: secret)
+        expect(page2.items).to eq((11..20).to_a)
+      end
+
+      it 'raises InvalidCursorError for tampered keyset cursor' do
+        page = described_class.paginate(items, strategy: :keyset, per_page: 10, secret: secret)
+        tampered = page.next_cursor.sub(/--.*$/, '--badhash')
+        expect do
+          described_class.paginate(items, strategy: :keyset, per_page: 10, cursor: tampered, secret: secret)
+        end.to raise_error(Philiprehberger::Pagination::InvalidCursorError)
+      end
+    end
+
+    it 'InvalidCursorError inherits from Error' do
+      expect(Philiprehberger::Pagination::InvalidCursorError).to be < Philiprehberger::Pagination::Error
+    end
+
+    it 'raises InvalidCursorError for cursor without separator when secret given' do
+      expect do
+        described_class.paginate(items, strategy: :cursor, per_page: 10,
+                                        cursor: Base64.strict_encode64('10'), secret: secret)
+      end.to raise_error(Philiprehberger::Pagination::InvalidCursorError)
+    end
+  end
+
   describe Philiprehberger::Pagination::Page do
     it 'stores items and metadata' do
       page = described_class.new(items: [1, 2, 3], total: 10, next_cursor: 'abc', prev_cursor: 'def')
@@ -229,6 +441,29 @@ RSpec.describe Philiprehberger::Pagination do
     it 'defaults total to nil' do
       page = described_class.new(items: [1])
       expect(page.total).to be_nil
+    end
+
+    it 'stores per_page, current_page, and offset' do
+      page = described_class.new(items: [1], total: 10, per_page: 5, current_page: 2, offset: 5)
+      expect(page.per_page).to eq(5)
+      expect(page.current_page).to eq(2)
+      expect(page.offset).to eq(5)
+    end
+
+    it 'returns complete metadata hash' do
+      page = described_class.new(items: [1], total: 50, per_page: 10, current_page: 3, offset: 20)
+      expect(page.metadata).to eq({
+                                    current_page: 3,
+                                    per_page: 10,
+                                    total_pages: 5,
+                                    total_count: 50,
+                                    offset: 20
+                                  })
+    end
+
+    it 'returns metadata with nil total_pages when total is nil' do
+      page = described_class.new(items: [1], per_page: 10)
+      expect(page.metadata[:total_pages]).to be_nil
     end
   end
 end
