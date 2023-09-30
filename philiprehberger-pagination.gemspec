@@ -10,8 +10,8 @@ Gem::Specification.new do |spec|
 
   spec.summary = 'Framework-agnostic pagination with cursor, offset, and keyset strategies'
   spec.description = 'Pagination library supporting offset-based, cursor-based, and keyset ' \
-                       'strategies. Returns page results with items, cursors, navigation links, ' \
-                       'totals, and has_next/has_prev helpers. Works with any collection.'
+                     'strategies. Returns page results with items, cursors, navigation links, ' \
+                     'totals, and has_next/has_prev helpers. Works with any collection.'
   spec.homepage = 'https://philiprehberger.com/open-source-packages/ruby/philiprehberger-pagination'
   spec.license = 'MIT'
 
