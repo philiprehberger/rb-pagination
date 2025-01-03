@@ -12,6 +12,8 @@ module Philiprehberger
     # @attr_reader current_page [Integer, nil] current page number (offset only)
     # @attr_reader offset [Integer, nil] current offset (offset only)
     class Page
+      include Enumerable
+
       attr_reader :items, :total, :next_cursor, :prev_cursor, :per_page, :current_page, :offset
 
       # Create a new page result.
@@ -48,6 +50,91 @@ module Philiprehberger
         !@prev_cursor.nil?
       end
 
+      # Whether this is the first page.
+      #
+      # For offset strategy, returns true when current_page is 1. For cursor/keyset
+      # strategies, returns true when there is no previous cursor.
+      #
+      # @return [Boolean]
+      def first_page?
+        return @current_page == 1 if @current_page
+
+        !has_prev?
+      end
+
+      # Whether this is the last page.
+      #
+      # Returns true when there is no next cursor.
+      #
+      # @return [Boolean]
+      def last_page?
+        !has_next?
+      end
+
+      # Total number of pages when both total and per_page are known.
+      #
+      # @return [Integer, nil] total page count or nil if indeterminate
+      def total_pages
+        return nil unless @total && @per_page&.positive?
+
+        (@total / @per_page.to_f).ceil
+      end
+
+      # Next page number for offset strategy.
+      #
+      # @return [Integer, nil] the next page number or nil if none
+      def next_page
+        return nil unless @current_page && has_next?
+
+        @current_page + 1
+      end
+
+      # Previous page number for offset strategy.
+      #
+      # @return [Integer, nil] the previous page number or nil if none
+      def prev_page
+        return nil unless @current_page && has_prev?
+
+        @current_page - 1
+      end
+
+      # Range of all page numbers for offset strategy.
+      #
+      # @return [Range, nil] 1..total_pages, or nil if total_pages is unknown
+      def page_range
+        pages = total_pages
+        return nil unless pages
+
+        1..pages
+      end
+
+      # Number of items on this page.
+      #
+      # @return [Integer]
+      def size
+        @items.length
+      end
+      alias length size
+      alias count size
+
+      # Whether this page has no items.
+      #
+      # @return [Boolean]
+      def empty?
+        @items.empty?
+      end
+
+      # Iterate over items on this page.
+      #
+      # @yield [item] each item on the page
+      # @return [Enumerator] if no block given
+      def each(&block)
+        return @items.each unless block
+
+        @items.each(&block)
+        self
+      end
+
       # Navigation links as a hash.
       #
       # @return [Hash<Symbol, String>] links with :next and :prev keys
@@ -62,16 +149,25 @@ module Philiprehberger
       #
       # @return [Hash] metadata including current_page, per_page, total_pages, total_count, offset
       def metadata
-        total_pages = if @total && @per_page&.positive?
-                        (@total / @per_page.to_f).ceil
-                      end
-
         {
           current_page: @current_page,
           per_page: @per_page,
           total_pages: total_pages,
           total_count: @total,
           offset: @offset
+        }
+      end
+
+      # Full page representation as a hash suitable for JSON serialization.
+      #
+      # Combines items, metadata, and navigation links in a single hash.
+      #
+      # @return [Hash] hash with :items, :metadata, and :links keys
+      def to_h
+        {
+          items: @items,
+          metadata: metadata,
+          links: links
         }
       end
     end

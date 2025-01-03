@@ -465,5 +465,143 @@ RSpec.describe Philiprehberger::Pagination do
       page = described_class.new(items: [1], per_page: 10)
       expect(page.metadata[:total_pages]).to be_nil
     end
+
+    describe '#to_h' do
+      it 'returns a hash with items, metadata, and links' do
+        page = described_class.new(items: [1, 2, 3], total: 50, per_page: 10, current_page: 2,
+                                   offset: 10, next_cursor: '3', prev_cursor: '1')
+        hash = page.to_h
+        expect(hash[:items]).to eq([1, 2, 3])
+        expect(hash[:metadata][:current_page]).to eq(2)
+        expect(hash[:metadata][:total_pages]).to eq(5)
+        expect(hash[:links]).to eq({ next: '3', prev: '1' })
+      end
+
+      it 'returns empty links hash when no cursors present' do
+        page = described_class.new(items: [1], total: 1)
+        expect(page.to_h[:links]).to eq({})
+      end
+    end
+
+    describe '#total_pages' do
+      it 'returns ceiling division of total by per_page' do
+        page = described_class.new(items: [1], total: 50, per_page: 10)
+        expect(page.total_pages).to eq(5)
+      end
+
+      it 'returns nil when total is nil' do
+        page = described_class.new(items: [1], per_page: 10)
+        expect(page.total_pages).to be_nil
+      end
+
+      it 'returns nil when per_page is nil' do
+        page = described_class.new(items: [1], total: 10)
+        expect(page.total_pages).to be_nil
+      end
+
+      it 'returns nil when per_page is zero' do
+        page = described_class.new(items: [1], total: 10, per_page: 0)
+        expect(page.total_pages).to be_nil
+      end
+    end
+
+    describe '#next_page / #prev_page' do
+      it 'returns the next page number for offset strategy' do
+        page = described_class.new(items: [1], total: 50, per_page: 10, current_page: 2, next_cursor: '3',
+                                   prev_cursor: '1')
+        expect(page.next_page).to eq(3)
+        expect(page.prev_page).to eq(1)
+      end
+
+      it 'returns nil for next_page when there is no next' do
+        page = described_class.new(items: [1], total: 10, per_page: 10, current_page: 1)
+        expect(page.next_page).to be_nil
+      end
+
+      it 'returns nil for prev_page on the first page' do
+        page = described_class.new(items: [1], total: 50, per_page: 10, current_page: 1, next_cursor: '2')
+        expect(page.prev_page).to be_nil
+      end
+
+      it 'returns nil for cursor-strategy pages (no current_page)' do
+        page = described_class.new(items: [1], next_cursor: 'abc')
+        expect(page.next_page).to be_nil
+        expect(page.prev_page).to be_nil
+      end
+    end
+
+    describe '#page_range' do
+      it 'returns 1..total_pages for offset strategy' do
+        page = described_class.new(items: [1], total: 50, per_page: 10)
+        expect(page.page_range).to eq(1..5)
+      end
+
+      it 'returns nil when total_pages is unknown' do
+        page = described_class.new(items: [1])
+        expect(page.page_range).to be_nil
+      end
+
+      it 'returns 1..1 when total equals per_page' do
+        page = described_class.new(items: [1], total: 10, per_page: 10)
+        expect(page.page_range).to eq(1..1)
+      end
+    end
+
+    describe '#first_page? / #last_page?' do
+      it 'identifies the first page by current_page' do
+        page = described_class.new(items: [1], total: 50, per_page: 10, current_page: 1, next_cursor: '2')
+        expect(page.first_page?).to be true
+        expect(page.last_page?).to be false
+      end
+
+      it 'identifies the last page by absence of next_cursor' do
+        page = described_class.new(items: [1], total: 50, per_page: 10, current_page: 5, prev_cursor: '4')
+        expect(page.first_page?).to be false
+        expect(page.last_page?).to be true
+      end
+
+      it 'treats cursor strategy without prev_cursor as first page' do
+        page = described_class.new(items: [1], next_cursor: 'abc')
+        expect(page.first_page?).to be true
+        expect(page.last_page?).to be false
+      end
+
+      it 'reports last page for lone page with no cursors' do
+        page = described_class.new(items: [1], total: 1)
+        expect(page.first_page?).to be true
+        expect(page.last_page?).to be true
+      end
+    end
+
+    describe 'Enumerable behavior' do
+      it 'exposes size, length, and count' do
+        page = described_class.new(items: [1, 2, 3])
+        expect(page.size).to eq(3)
+        expect(page.length).to eq(3)
+        expect(page.count).to eq(3)
+      end
+
+      it 'reports empty? correctly' do
+        expect(described_class.new(items: []).empty?).to be true
+        expect(described_class.new(items: [1]).empty?).to be false
+      end
+
+      it 'iterates items with each' do
+        seen = described_class.new(items: [1, 2, 3]).map { |item| item }
+        expect(seen).to eq([1, 2, 3])
+      end
+
+      it 'supports Enumerable methods like map and select' do
+        page = described_class.new(items: [1, 2, 3, 4])
+        expect(page.map { |item| item * 2 }).to eq([2, 4, 6, 8])
+        expect(page.select(&:even?)).to eq([2, 4])
+      end
+
+      it 'returns an Enumerator from each when no block given' do
+        page = described_class.new(items: [1, 2, 3])
+        expect(page.each).to be_a(Enumerator)
+        expect(page.each.to_a).to eq([1, 2, 3])
+      end
+    end
   end
 end

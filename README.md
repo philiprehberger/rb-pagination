@@ -47,6 +47,9 @@ page.has_prev?   # => true
 page = Philiprehberger::Pagination.paginate(items, strategy: :offset, per_page: 10, page: 3)
 page.next_cursor  # => "4" (next page number)
 page.prev_cursor  # => "2" (previous page number)
+page.next_page    # => 4
+page.prev_page    # => 2
+page.page_range   # => 1..5
 ```
 
 ### Cursor Pagination
@@ -73,6 +76,31 @@ page = Philiprehberger::Pagination.paginate(sorted_items, strategy: :keyset, per
 page = Philiprehberger::Pagination.paginate(items, strategy: :offset, per_page: 10, page: 2)
 page.metadata
 # => { current_page: 2, per_page: 10, total_pages: 5, total_count: 50, offset: 10 }
+page.total_pages   # => 5
+page.first_page?   # => false
+page.last_page?    # => false
+```
+
+### Hash & JSON Serialization
+
+```ruby
+page = Philiprehberger::Pagination.paginate(items, strategy: :offset, per_page: 10, page: 2)
+page.to_h
+# => {
+#   items: [...],
+#   metadata: { current_page: 2, per_page: 10, total_pages: 5, total_count: 50, offset: 10 },
+#   links: { next: "3", prev: "1" }
+# }
+```
+
+### Iteration
+
+```ruby
+page = Philiprehberger::Pagination.paginate(items, strategy: :offset, per_page: 10)
+page.size              # => 10
+page.empty?            # => false
+page.each { |item| puts item }
+page.map { |item| item.name }  # Enumerable methods work directly on the page
 ```
 
 ### Page Size Limits
@@ -116,8 +144,18 @@ page = Philiprehberger::Pagination.paginate(items,
 | `#prev_cursor` | Cursor for the previous page |
 | `#has_next?` | Whether there is a next page |
 | `#has_prev?` | Whether there is a previous page |
+| `#first_page?` | Whether this is the first page |
+| `#last_page?` | Whether this is the last page |
+| `#next_page` | Next page number (offset only) |
+| `#prev_page` | Previous page number (offset only) |
+| `#page_range` | Range of all page numbers, e.g. `1..5` |
+| `#total_pages` | Ceiling division of total by per_page |
 | `#links` | Hash of navigation cursors |
 | `#metadata` | Hash with current_page, per_page, total_pages, total_count, offset |
+| `#to_h` | Hash with items, metadata, and links (JSON-ready) |
+| `#size` / `#length` / `#count` | Number of items on this page |
+| `#empty?` | Whether the page has no items |
+| `#each` | Iterate over items (includes `Enumerable`) |
 | `#per_page` | Items per page |
 | `#current_page` | Current page number (offset only) |
 | `#offset` | Current offset (offset only) |
