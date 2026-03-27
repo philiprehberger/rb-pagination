@@ -73,7 +73,7 @@ module Philiprehberger
 
       end_index = start_index + page_items.length
       has_next = end_index < total
-      has_prev = start_index > 0
+      has_prev = start_index.positive?
 
       Page.new(
         items: page_items,
