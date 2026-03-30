@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-29
+
+### Added
+- Page metadata via `page.metadata` returning current_page, per_page, total_pages, total_count, offset
+- Page size limits with `min_per_page` and `max_per_page` options raising `InvalidPageSizeError`
+- Cursor encryption with HMAC-SHA256 signing via `secret` option raising `InvalidCursorError`
+
 ## [0.1.3] - 2026-03-24
 
 ### Fixed
