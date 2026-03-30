@@ -62,7 +62,7 @@ module Philiprehberger
       #
       # @return [Hash] metadata including current_page, per_page, total_pages, total_count, offset
       def metadata
-        total_pages = if @total && @per_page && @per_page.positive?
+        total_pages = if @total && @per_page&.positive?
                         (@total / @per_page.to_f).ceil
                       end
 
