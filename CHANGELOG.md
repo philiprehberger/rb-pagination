@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-15
+
+### Changed
+- Verify full compliance with Ruby package guides (gemspec metadata, README structure, CHANGELOG format, CI workflow)
+
 ## [0.3.0] - 2026-04-15
 
 ### Added
@@ -56,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Navigation helpers: has_next?, has_prev?, links
 - Configurable per_page with minimum of 1
 
+[0.3.1]: https://github.com/philiprehberger/rb-pagination/releases/tag/v0.3.1
 [0.3.0]: https://github.com/philiprehberger/rb-pagination/releases/tag/v0.3.0
 [0.2.1]: https://github.com/philiprehberger/rb-pagination/releases/tag/v0.2.1
 [0.2.0]: https://github.com/philiprehberger/rb-pagination/releases/tag/v0.2.0
