@@ -483,6 +483,21 @@ RSpec.describe Philiprehberger::Pagination do
       end
     end
 
+    describe '#to_json' do
+      it 'returns JSON matching the to_h representation' do
+        require 'json'
+        page = described_class.new(items: [1, 2, 3], total: 50, per_page: 10, current_page: 2)
+        expect(JSON.parse(page.to_json)).to eq(JSON.parse(JSON.generate(page.to_h)))
+      end
+
+      it 'forwards formatting arguments to JSON.generate' do
+        require 'json'
+        page = described_class.new(items: [1], total: 1)
+        pretty = JSON.generate(page.to_h, indent: '  ', space: ' ', object_nl: "\n")
+        expect(page.to_json(indent: '  ', space: ' ', object_nl: "\n")).to eq(pretty)
+      end
+    end
+
     describe '#total_pages' do
       it 'returns ceiling division of total by per_page' do
         page = described_class.new(items: [1], total: 50, per_page: 10)

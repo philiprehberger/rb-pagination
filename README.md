@@ -91,6 +91,12 @@ page.to_h
 #   metadata: { current_page: 2, per_page: 10, total_pages: 5, total_count: 50, offset: 10 },
 #   links: { next: "3", prev: "1" }
 # }
+
+page.to_json
+# => '{"items":[...],"metadata":{...},"links":{...}}'
+
+# Formatting options are forwarded to JSON.generate
+page.to_json(indent: "  ", space: " ", object_nl: "\n")
 ```
 
 ### Iteration
@@ -153,6 +159,7 @@ page = Philiprehberger::Pagination.paginate(items,
 | `#links` | Hash of navigation cursors |
 | `#metadata` | Hash with current_page, per_page, total_pages, total_count, offset |
 | `#to_h` | Hash with items, metadata, and links (JSON-ready) |
+| `#to_json(*args)` | JSON string of the page; extra args forwarded to `JSON.generate` |
 | `#size` / `#length` / `#count` | Number of items on this page |
 | `#empty?` | Whether the page has no items |
 | `#each` | Iterate over items (includes `Enumerable`) |
