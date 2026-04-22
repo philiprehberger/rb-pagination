@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-20
+
+### Added
+- `Page#to_json(*args)` — serialize a `Page` to JSON using the canonical `to_h` hash. Additional arguments are forwarded to `JSON.generate`, so callers can opt into pretty-printing (`indent:`, `space:`, `object_nl:`). Loading `json` is deferred to first use so the gem remains zero-dependency.
+
 ## [0.3.1] - 2026-04-15
 
 ### Changed

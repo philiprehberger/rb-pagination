@@ -170,6 +170,19 @@ module Philiprehberger
           links: links
         }
       end
+
+      # Serialize the page to a JSON string.
+      #
+      # Equivalent to calling `JSON.generate(page.to_h, *args)` — trailing
+      # arguments are forwarded to `JSON.generate` for formatting options
+      # (e.g. pretty-printing). Loading `json` is deferred until first use
+      # so this gem remains zero-dependency.
+      #
+      # @return [String] JSON-encoded representation
+      def to_json(*args)
+        require 'json' unless defined?(::JSON)
+        ::JSON.generate(to_h, *args)
+      end
     end
   end
 end
