@@ -63,6 +63,17 @@ next_page = Philiprehberger::Pagination.paginate(items,
 )
 ```
 
+### Walking Pages with `next_params` / `prev_params`
+
+```ruby
+page = Philiprehberger::Pagination.paginate(items, strategy: :offset, per_page: 10, page: 2)
+
+page.next_params # => { page: 3, per_page: 10 }
+page.prev_params # => { page: 1, per_page: 10 }
+
+next_page = Philiprehberger::Pagination.paginate(items, strategy: :offset, **page.next_params)
+```
+
 ### Keyset Pagination
 
 ```ruby
@@ -154,6 +165,8 @@ page = Philiprehberger::Pagination.paginate(items,
 | `#last_page?` | Whether this is the last page |
 | `#next_page` | Next page number (offset only) |
 | `#prev_page` | Previous page number (offset only) |
+| `#next_params` | Hash of kwargs to splat into `Pagination.paginate` for the next page (nil at end) |
+| `#prev_params` | Hash of kwargs to splat into `Pagination.paginate` for the previous page (nil at start) |
 | `#page_range` | Range of all page numbers, e.g. `1..5` |
 | `#total_pages` | Ceiling division of total by per_page |
 | `#links` | Hash of navigation cursors |

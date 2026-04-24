@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-23
+
+### Added
+- `Page#next_params` and `Page#prev_params` — return a hash of keyword arguments suitable for splatting into `Pagination.paginate` to fetch the next or previous page. For offset pages the hash contains `:page` and `:per_page`; for cursor/keyset pages it contains `:cursor` and `:per_page`. Returns `nil` at the start/end of the collection.
+
 ## [0.4.0] - 2026-04-20
 
 ### Added

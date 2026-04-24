@@ -545,6 +545,53 @@ RSpec.describe Philiprehberger::Pagination do
       end
     end
 
+    describe '#next_params / #prev_params' do
+      context 'with offset strategy' do
+        it 'returns page+per_page kwargs for next and prev' do
+          page = described_class.new(items: [1], total: 50, per_page: 10, current_page: 2, next_cursor: '3',
+                                     prev_cursor: '1')
+          expect(page.next_params).to eq({ page: 3, per_page: 10 })
+          expect(page.prev_params).to eq({ page: 1, per_page: 10 })
+        end
+
+        it 'returns nil for next_params on the last page' do
+          page = described_class.new(items: [1], total: 10, per_page: 10, current_page: 1)
+          expect(page.next_params).to be_nil
+        end
+
+        it 'returns nil for prev_params on the first page' do
+          page = described_class.new(items: [1], total: 50, per_page: 10, current_page: 1, next_cursor: '2')
+          expect(page.prev_params).to be_nil
+        end
+      end
+
+      context 'with cursor strategy' do
+        it 'returns cursor+per_page kwargs for next and prev' do
+          page = described_class.new(items: [1], per_page: 10, next_cursor: 'abc', prev_cursor: 'xyz')
+          expect(page.next_params).to eq({ cursor: 'abc', per_page: 10 })
+          expect(page.prev_params).to eq({ cursor: 'xyz', per_page: 10 })
+        end
+
+        it 'returns nil when there is no next cursor' do
+          page = described_class.new(items: [1], per_page: 10, prev_cursor: 'xyz')
+          expect(page.next_params).to be_nil
+        end
+
+        it 'returns nil when there is no prev cursor' do
+          page = described_class.new(items: [1], per_page: 10, next_cursor: 'abc')
+          expect(page.prev_params).to be_nil
+        end
+      end
+
+      it 'round-trips via Pagination.paginate for offset strategy' do
+        items = (1..30).to_a
+        page1 = described_class.new(items: items.first(10), total: 30, per_page: 10, current_page: 1,
+                                    next_cursor: '2')
+        page2 = Philiprehberger::Pagination.paginate(items, strategy: :offset, **page1.next_params)
+        expect(page2.items).to eq((11..20).to_a)
+      end
+    end
+
     describe '#page_range' do
       it 'returns 1..total_pages for offset strategy' do
         page = described_class.new(items: [1], total: 50, per_page: 10)

@@ -135,6 +135,36 @@ module Philiprehberger
         self
       end
 
+      # Keyword arguments for fetching the next page.
+      #
+      # Returns a hash suitable for splatting into {Pagination.paginate}: for offset
+      # pages the hash contains `:page` and `:per_page`; for cursor/keyset pages it
+      # contains `:cursor` and `:per_page`.
+      #
+      # @return [Hash, nil] splattable keyword args, or nil if there is no next page
+      def next_params
+        return nil unless has_next?
+
+        if @current_page
+          { page: @current_page + 1, per_page: @per_page }
+        else
+          { cursor: @next_cursor, per_page: @per_page }
+        end
+      end
+
+      # Keyword arguments for fetching the previous page.
+      #
+      # @return [Hash, nil] splattable keyword args, or nil if there is no previous page
+      def prev_params
+        return nil unless has_prev?
+
+        if @current_page
+          { page: @current_page - 1, per_page: @per_page }
+        else
+          { cursor: @prev_cursor, per_page: @per_page }
+        end
+      end
+
       # Navigation links as a hash.
       #
       # @return [Hash<Symbol, String>] links with :next and :prev keys
