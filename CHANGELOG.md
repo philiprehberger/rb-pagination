@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-27
+
+### Added
+- `Pagination.each_page(collection, strategy:, per_page:, **opts) { |page| ... }` — walks every page of a collection in order, threading cursors (or incrementing the page number for offset strategy). Returns an `Enumerator` if no block is given. Forwards extra options to `paginate` (e.g. `secret:` for signed cursors).
+
 ## [0.5.0] - 2026-04-23
 
 ### Added

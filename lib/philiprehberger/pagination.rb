@@ -47,6 +47,43 @@ module Philiprehberger
       end
     end
 
+    # Iterate every page of a collection in order, yielding each {Page}.
+    #
+    # Drives {.paginate} repeatedly using the previous page's `next_cursor`
+    # (or next page number for offset strategy) until there are no further
+    # pages. Returns an Enumerator if no block is given. Useful for
+    # batch-processing idioms (export, ETL, slow report generation) where
+    # callers would otherwise have to thread cursors by hand.
+    #
+    # @param collection [Array, #to_a] the collection to paginate
+    # @param strategy [Symbol] :offset, :cursor, or :keyset
+    # @param per_page [Integer] items per page
+    # @param opts [Hash] additional keyword args forwarded to {.paginate}
+    # @yield [page] each {Page} in order
+    # @return [Enumerator, nil]
+    def self.each_page(collection, strategy: :offset, per_page: DEFAULT_PER_PAGE, **opts)
+      unless block_given?
+        return to_enum(:each_page, collection, strategy: strategy, per_page: per_page, **opts)
+      end
+
+      first_args = opts.dup
+      page = paginate(collection, strategy: strategy, per_page: per_page, **first_args)
+      yield page
+
+      while page.has_next?
+        loop_args = opts.dup
+        if strategy.to_sym == :offset
+          loop_args[:page] = page.current_page + 1
+        else
+          loop_args[:cursor] = page.next_cursor
+        end
+        page = paginate(collection, strategy: strategy, per_page: per_page, **loop_args)
+        yield page
+      end
+
+      nil
+    end
+
     # Validate per_page against min/max bounds.
     #
     # @param per_page [Integer] the requested page size

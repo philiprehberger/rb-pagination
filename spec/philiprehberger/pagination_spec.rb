@@ -666,4 +666,52 @@ RSpec.describe Philiprehberger::Pagination do
       end
     end
   end
+
+  describe '.each_page' do
+    it 'yields pages in order for offset strategy' do
+      collected = []
+      described_class.each_page(items, strategy: :offset, per_page: 10) { |p| collected << p.items }
+      expect(collected).to eq([(1..10).to_a, (11..20).to_a, (21..30).to_a, (31..40).to_a, (41..50).to_a])
+    end
+
+    it 'yields pages in order for cursor strategy' do
+      collected = []
+      described_class.each_page(items, strategy: :cursor, per_page: 20) { |p| collected << p.items }
+      expect(collected).to eq([(1..20).to_a, (21..40).to_a, (41..50).to_a])
+    end
+
+    it 'yields exactly one page for an empty collection' do
+      collected = []
+      described_class.each_page([], per_page: 10) { |p| collected << p }
+      expect(collected.length).to eq(1)
+      expect(collected.first.items).to eq([])
+      expect(collected.first.has_next?).to be(false)
+    end
+
+    it 'yields exactly one page when the collection fits in a single page' do
+      collected = []
+      described_class.each_page([1, 2, 3], per_page: 10) { |p| collected << p }
+      expect(collected.length).to eq(1)
+      expect(collected.first.items).to eq([1, 2, 3])
+    end
+
+    it 'returns an Enumerator when no block is given' do
+      enum = described_class.each_page(items, per_page: 20)
+      expect(enum).to be_a(Enumerator)
+      expect(enum.map { |p| p.items.length }).to eq([20, 20, 10])
+    end
+
+    it 'forwards extra options to paginate (e.g. signed cursors)' do
+      secret = 'shhh'
+      collected = []
+      described_class.each_page(items, strategy: :cursor, per_page: 20, secret: secret) { |p| collected << p.items }
+      expect(collected.flatten).to eq(items)
+    end
+
+    it 'visits each item exactly once across all pages' do
+      visited = []
+      described_class.each_page(items, strategy: :offset, per_page: 7) { |p| visited.concat(p.items) }
+      expect(visited).to eq(items)
+    end
+  end
 end

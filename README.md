@@ -143,6 +143,28 @@ page = Philiprehberger::Pagination.paginate(items,
 # Tampered cursors raise InvalidCursorError
 ```
 
+### Iterating All Pages
+
+`each_page` walks the collection one page at a time, threading cursors (or
+incrementing the page number for offset strategy) until exhausted. Returns
+an `Enumerator` if no block is given. Useful for export, ETL, and slow
+report generation that should pull every record without holding the entire
+result set in memory at once.
+
+```ruby
+Philiprehberger::Pagination.each_page(records, strategy: :offset, per_page: 100) do |page|
+  process(page.items)
+end
+
+# Cursor strategy works the same way
+Philiprehberger::Pagination.each_page(records, strategy: :cursor, per_page: 100) do |page|
+  process(page.items)
+end
+
+# Without a block, returns an Enumerator
+total = Philiprehberger::Pagination.each_page(records, per_page: 100).sum { |p| p.items.length }
+```
+
 ## API
 
 ### `Pagination`
@@ -150,6 +172,7 @@ page = Philiprehberger::Pagination.paginate(items,
 | Method | Description |
 |--------|-------------|
 | `.paginate(collection, strategy:, per_page:, cursor:, page:, max_per_page:, min_per_page:, secret:)` | Paginate a collection |
+| `.each_page(collection, strategy: :offset, per_page:, **opts)` | Yield every `Page` of a collection in order; returns an `Enumerator` if no block is given |
 
 ### `Page`
 
